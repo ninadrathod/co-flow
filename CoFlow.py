@@ -158,15 +158,6 @@ class CoFlow:
     """
     def trigger_co_flow(self, 
                         task_list: list):
-        """
-        task_list = [
-                        { task_id: str,
-                          function_handle: function_handle,
-                          function_args: function_args,
-                          task_dependencies: list
-                        }, ....
-                    ]
-        """
 
         try:
             # 1) checking if all the tasks in task_list have a unique task_id
