@@ -1,6 +1,7 @@
 import time
 from multiprocessing import Process, Lock, Manager, Value
 import os
+from queue import Queue
 
 class CoFlow:  
 
@@ -19,7 +20,8 @@ class CoFlow:
         self.lock = manager.Lock()
         self.task_set = set()
         self.kill_flag = Value('b', False)
-
+        self.pTasks = Value('i', 0)
+        self.pTaskLimit = 5
 
     """
     __check_dependency_uniqueness() checks if all the tasks in "dependency_list" have a unique task_id.
@@ -134,16 +136,27 @@ class CoFlow:
         try:
             # 1) while loop that runs untill all dependencies are satisfied
             while (not self.__dependency_check(task) and not self.kill_flag.value):
-                time.sleep(2)
+                pass
+            print(f"Dependencies for {task["task_id"]} are satisfied")
+            
+            # 2) while loop to check if the task quota is satisfied or not
+            while (not self.kill_flag.value):
+                with self.lock:
+                    if(self.pTasks.value < self.pTaskLimit):
+                        #print(f"{task["task_id"]}:: self.pTasks.value = {self.pTasks.value}")
+                        self.pTasks.value += 1
+                        break
+            print(f"{task["task_id"]} got quota")
 
-            # 2) trigger the flow.
+            # 3) trigger the flow.
             if not(self.kill_flag.value):
                 print("Triggered: ",task["task_id"]," :: ",task["function_handle"].__name__,"(",*task["function_args"],")")
                 #print(f"Triggered: {task['task_id']} :: {task['function_handle'].__name__}({*task['function_args']})")
                 task["function_handle"](*task["function_args"])
+                print("Completed: ",task["task_id"])
                 with self.lock:
                     self.task_status_dict[task["task_id"]] = True
-                print("Completed: ",task["task_id"])
+                    self.pTasks.value -= 1                
             else:
                 print(f"{CoFlow._YELLOW}Did Not Run {task['task_id']} {CoFlow._RESET}")
 
@@ -154,12 +167,15 @@ class CoFlow:
 
 
     """
-    trigger_co_flow() runs all the tasks in task_list parallely.
+    trigger_co_flow() runs <ptask_limit> tasks in the task_list parallely.
     """
     def trigger_co_flow(self, 
-                        task_list: list):
+                        task_list: list,
+                        ptask_limit = 5):
 
         try:
+            self.pTaskLimit = ptask_limit
+
             # 1) checking if all the tasks in task_list have a unique task_id
             if(not self.__check_uniqueness(task_list)):
                 print(f"{CoFlow._RED}\nError: All tasks must have unique task_id{CoFlow._RESET}")

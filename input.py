@@ -14,7 +14,7 @@ task_list = [
         {
             "task_id": "t1",
             "function_handle": sleep_function,
-            "function_args": [2],
+            "function_args": [20],
             "dependency_list": []        
         },
         {
